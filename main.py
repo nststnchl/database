@@ -2,7 +2,7 @@ import os
 import _csv
 import re
 import datetime
-import calendar
+import bisect
 
 NUM_OF_ARGS = 6
 
@@ -48,8 +48,7 @@ class Person:
 
 
 biggest_id = 0
-removal_list = []
-clean_id = 0
+freed_id = []
 is_relevant = 1
 try:
     file = open('database.csv.txt', 'r+')
@@ -72,7 +71,6 @@ def check_for_birthday(p):
     now = datetime.datetime.now()
     date = datetime.datetime(year=now.year, month=date.month, day=date.day)
     now = datetime.datetime(year=now.year, month=now.month, day=now.day)
-    b = calendar.isleap(now.year + 1)
     if now > date:
         date = datetime.datetime(year=date.year + 1, month=date.month, day=date.day)
     ost = (date - now).days
@@ -129,40 +127,38 @@ def before_start():
             i += 1
     else:
         write_header()
+    i = 0
+    while i < biggest_id:
+        if i not in id_to_person.keys():
+            bisect.insort(freed_id, i)
+        i += 1
 
 
 def refresh():
     global is_relevant
-    global clean_id
     global biggest_id
-    global removal_list
 
     if is_relevant == 0:
         file.seek(0)
         file.truncate()
         write_header()
-        i = clean_id
         new_biggest_id = 0
-        while i < biggest_id:
-            if i not in removal_list:
-                try:
-                    p = id_to_person[i]
-                    writer.writerow(p.to_list())
-                    if new_biggest_id <= i:
-                        new_biggest_id = i + 1
-                except KeyError:
-                    pass
-            i += 1
+
+        for i in id_to_person.keys():
+            try:
+                p = id_to_person[i]
+                writer.writerow(p.to_list())
+                if new_biggest_id <= i:
+                    new_biggest_id = i + 1
+            except KeyError:
+                pass
         file.flush()
         biggest_id = new_biggest_id
-        clean_id = 0
         is_relevant = 1
-        removal_list = []
 
 
 def clean():
-    global clean_id
-    global removal_list
+    global freed_id
     global id_to_person
     global phone_number_to_id
     global date_of_birth_to_id
@@ -171,10 +167,10 @@ def clean():
     global patronymic_to_id
     global is_relevant
 
-    clean_id = biggest_id
+    bisect.insort(freed_id, id_to_person.keys)
+
     is_relevant = 0
 
-    removal_list = []
     id_to_person.clear()
     date_of_birth_to_id.clear()
     phone_number_to_id.clear()
@@ -191,6 +187,9 @@ def delete_id_from_list(list_, key, id_to_delete):
 
 
 def delete(id_to_delete):
+    global freed_id
+    global is_relevant
+
     p = id_to_person[id_to_delete]
     print("Do you want to delete this one? (Y/N)")
     print(str(p.to_str()))
@@ -203,11 +202,9 @@ def delete(id_to_delete):
         delete_id_from_list(patronymic_to_id, p.fio.patronymic, id_to_delete)
         delete_id_from_list(date_of_birth_to_id, p.date_of_birth, id_to_delete)
         delete_id_from_list(phone_number_to_id, p.phone_number, id_to_delete)
-
-        global removal_list
-        removal_list += [id_to_delete]
+        bisect.insort(freed_id, id_to_delete)
         print("Person was deleted")
-        global is_relevant
+
         is_relevant = 0
     else:
         print("Deletion was canceled")
@@ -363,6 +360,7 @@ def printing_choice(type_of_action):
 
 def input_person():
     global biggest_id
+    global is_relevant
     per = Person()
     fio = Fio()
     print("last name:")
@@ -397,11 +395,14 @@ def input_person():
         return
     per.phone_number = phone_number
 
-    per.id = biggest_id
-    biggest_id += 1
+    if len(freed_id) > 0:
+        per.id = freed_id[0]
+        freed_id.pop(0)
+    else:
+        per.id = biggest_id
+        biggest_id += 1
 
     add_person_to_dictionaries(per)
-    global is_relevant
     is_relevant = 0
 
 
