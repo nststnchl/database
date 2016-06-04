@@ -3,6 +3,7 @@ import _csv
 import re
 import datetime
 import calendar
+import traceback
 
 NUM_OF_ARGS = 6
 
@@ -176,38 +177,26 @@ def clean():
     is_relevant = 0
 
 
+def delete_id_from_list(list_, key, id_to_delete):
+    list_new = list_[key]
+    list_.pop(key)
+    list_new.remove(id_to_delete)
+    list_[key] = list_new
+
+
 def delete(id_to_delete):
     p = id_to_person[id_to_delete]
     print("Do you want to delete this one? (Y/N)")
     print(str(p.to_list()))
     inp = input()
     if inp == 'y':
-        id_to_person.pop(id_to_delete, p)
+        id_to_person.pop(id_to_delete)
 
-        list_ = first_name_to_id[p.fio.first_name]
-        first_name_to_id.pop(p.fio.first_name)
-        list_.remove(id_to_delete)
-        first_name_to_id[p.fio.first_name] = list_
-
-        list_ = last_name_to_id[p.fio.last_name]
-        last_name_to_id.pop(p.fio.last_name)
-        list_.remove(id_to_delete)
-        last_name_to_id[p.fio.last_name] = list_
-
-        list_ = phone_number_to_id[p.phone_number]
-        phone_number_to_id.pop(p.phone_number)
-        list_.remove(id_to_delete)
-        phone_number_to_id[p.phone_number] = list_
-
-        list_ = date_of_birth_to_id[p.date_of_birth]
-        date_of_birth_to_id.pop(p.date_of_birth)
-        list_.remove(id_to_delete)
-        date_of_birth_to_id[p.date_of_birth] = list_
-
-        list_ = patronymic_to_id[p.fio.patronymic]
-        patronymic_to_id.pop(p.fio.patronymic)
-        list_.remove(id_to_delete)
-        patronymic_to_id[p.fio.patronymic] = list_
+        delete_id_from_list(first_name_to_id, p.fio.first_name, id_to_delete)
+        delete_id_from_list(last_name_to_id, p.fio.last_name, id_to_delete)
+        delete_id_from_list(patronymic_to_id, p.fio.patronymic, id_to_delete)
+        delete_id_from_list(date_of_birth_to_id, p.date_of_birth, id_to_delete)
+        delete_id_from_list(phone_number_to_id, p.phone_number, id_to_delete)
 
         global removal_list
         removal_list += [id_to_delete]
@@ -225,7 +214,7 @@ def action(list_id, field, act_):
         more_than_1 = n > 1
         verb = "are " if more_than_1 else "is "
         ending = "s" if more_than_1 else ""
-        print("There " + verb + str(n) + " person" + ending + "with this " + field)
+        print("There " + verb + str(n) + " person " + ending + "with this " + field)
         i = 0
         while i < n:
             print(str(i) + ":", end='  ')
@@ -242,7 +231,11 @@ def action(list_id, field, act_):
                 else:
                     delete(list_id[int(inp)])
             else:
-                delete(delete(list_id[0]))
+                try:
+                    delete(delete(list_id[0])) # TODO -<<< все выполняется, но летит ошибка. не ловится Exception, но при этом утверждается, что это KeyError which is inException
+                except:
+                    traceback.print_exc()
+
         else:
             print('\n')
     if n == 0:
@@ -258,7 +251,7 @@ def check(all_list, val):
         return None
 
 
-def act(value, all_list, name_of_list, type_of_action):
+def action_launcher(value, all_list, name_of_list, type_of_action):
     list_id = check(all_list, value)
     if list_id is not None:
         action(list_id, name_of_list, type_of_action)
@@ -330,43 +323,42 @@ def printing_choice(type_of_action):
     print("go back         --> print b")
     inp = input()
     inp = inp.lower()
-    print("Enter", end=' ')
     if inp == "ln":
-        print("last name: ")
+        print("Enter last name: ")
         last_name = reg_input("[A-Za-zА-Яа-я]+")
         if last_name is None:
             return
-        act(standardize(last_name), last_name_to_id, "last name", type_of_action)
+        action_launcher(standardize(last_name), last_name_to_id, "last name", type_of_action)
     elif inp == "fn":
-        print("first name")
+        print("Enter first name:")
         first_name = reg_input("[A-Za-zА-Яа-я]+")
         if first_name is None:
             return
-        act(standardize(first_name), first_name_to_id, "first name", type_of_action)
+        action_launcher(standardize(first_name), first_name_to_id, "first name", type_of_action)
     elif inp == "p":
-        print("patronymic")
+        print("Enter patronymic:")
         patronymic = reg_input("[A-Za-zА-Яа-я]+")
         if patronymic is None:
             return
-        act(standardize(patronymic), patronymic_to_id, "patronymic", type_of_action)
+        action_launcher(standardize(patronymic), patronymic_to_id, "patronymic", type_of_action)
     elif inp == "db":
-        print("date of birth (dd.mm.yyyy):")
+        print("Enter date of birth (dd.mm.yyyy):")
         date_of_birth = date_input()
         if date_of_birth is None:
             return
-        act(date_of_birth, date_of_birth_to_id, "date_of_birth", type_of_action)
+        action_launcher(date_of_birth, date_of_birth_to_id, "date_of_birth", type_of_action)
     elif inp == "pn":
-        print("phone number")
+        print("Enter phone number")
         phone_number = reg_input("[+]?[0-9]+")
         if inp is None:
             return
-        act(phone_number, phone_number_to_id, "phone_number", type_of_action)
+        action_launcher(phone_number, phone_number_to_id, "phone_number", type_of_action)
     elif inp == "id":
-        print("ID")
+        print("Enter ID")
         id_ = reg_input("[0-9]+")
         act_by_id(int(id_), type_of_action)
     elif inp != "b":
-        print("Wrong input\n")
+        print("WRONG INPUT\n")
 
 
 def input_person():
@@ -415,12 +407,13 @@ def input_person():
 
 def start():
     while 1:
-        print("Add a person    --> print A(a)")
-        print("Delete a person --> print D(d)")
-        print("Find a person   --> print F(f)")
-        print("Clean database  --> print C(c)")
-        print("Refresh table   --> print R(r)")
-        print("Exit            --> print E(e)")
+        print("Add a person      --> print A(a)")
+        print("Delete a person   --> print D(d)")
+        print("Find a person     --> print F(f)")
+        print("Clean database    --> print C(c)")
+        print("Refresh table     --> print R(r)")
+        print("Check if relevant --> print CH(ch)")
+        print("Exit              --> print E(e)")
 
         inp = input()
         inp = inp.lower()
@@ -443,6 +436,8 @@ def start():
             return
         elif inp == "r":
             refresh()
+        elif inp == "ch":
+            print("Base " + ("is" if is_relevant else "MAY NOT be") + " relevant\n")
         else:
             print("No such command\n")
 

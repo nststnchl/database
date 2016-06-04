@@ -5,6 +5,7 @@ Table with name *database.csv.txt* contains information about **ID**, **Last Nam
 You can open it any time, but relevance is guaranteed either when app is closed, either when table was recently updated.
 
 You can:
+
 1. Add a person
 
 2. Delete a person
