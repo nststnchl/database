@@ -3,7 +3,6 @@ import _csv
 import re
 import datetime
 import calendar
-import traceback
 
 NUM_OF_ARGS = 6
 
@@ -50,7 +49,7 @@ class Person:
 
 biggest_id = 0
 removal_list = []
-total_clean = 0
+clean_id = 0
 is_relevant = 1
 try:
     file = open('database.csv.txt', 'r+')
@@ -71,15 +70,14 @@ patronymic_to_id = {}
 def check_for_birthday(p):
     date = p.date_of_birth
     now = datetime.datetime.now()
-    if now.day < date.day:
-        ost = date.day - now.day
-    else:
-        if calendar.isleap(now.year + 1):
-            ost = 366 + date.day - now.day
-        else:
-            ost = 365 + date.day - now.day
+    date = datetime.datetime(year=now.year, month=date.month, day=date.day)
+    now = datetime.datetime(year=now.year, month=now.month, day=now.day)
+    b = calendar.isleap(now.year + 1)
+    if now > date:
+        date = datetime.datetime(year=date.year + 1, month=date.month, day=date.day)
+    ost = (date - now).days
     if ost < 14:
-        print("REMINDER: " + p.fio.first_name + " " + p.fio.last_name +
+        print("REMINDER: " + p.fio.last_name + " " + p.fio.first_name +
               " " + p.fio.patronymic + " has a birthday in " + str(ost) + " days")
 
 
@@ -135,46 +133,54 @@ def before_start():
 
 def refresh():
     global is_relevant
+    global clean_id
+    global biggest_id
+    global removal_list
+
     if is_relevant == 0:
         file.seek(0)
         file.truncate()
         write_header()
-        global total_clean
-        global biggest_id
-        i = total_clean
+        i = clean_id
+        new_biggest_id = 0
         while i < biggest_id:
             if i not in removal_list:
                 try:
                     p = id_to_person[i]
                     writer.writerow(p.to_list())
+                    if new_biggest_id <= i:
+                        new_biggest_id = i + 1
                 except KeyError:
                     pass
             i += 1
         file.flush()
-        total_clean = 0
-        biggest_id = 0
+        biggest_id = new_biggest_id
+        clean_id = 0
         is_relevant = 1
+        removal_list = []
 
 
 def clean():
-    global total_clean
-    total_clean = biggest_id
+    global clean_id
     global removal_list
-    removal_list = []
     global id_to_person
-    id_to_person.clear()
     global phone_number_to_id
-    phone_number_to_id.clear()
     global date_of_birth_to_id
-    date_of_birth_to_id.clear()
     global last_name_to_id
-    last_name_to_id.clear()
     global first_name_to_id
-    first_name_to_id.clear()
     global patronymic_to_id
-    patronymic_to_id.clear()
     global is_relevant
+
+    clean_id = biggest_id
     is_relevant = 0
+
+    removal_list = []
+    id_to_person.clear()
+    date_of_birth_to_id.clear()
+    phone_number_to_id.clear()
+    last_name_to_id.clear()
+    first_name_to_id.clear()
+    patronymic_to_id.clear()
 
 
 def delete_id_from_list(list_, key, id_to_delete):
@@ -187,7 +193,7 @@ def delete_id_from_list(list_, key, id_to_delete):
 def delete(id_to_delete):
     p = id_to_person[id_to_delete]
     print("Do you want to delete this one? (Y/N)")
-    print(str(p.to_list()))
+    print(str(p.to_str()))
     inp = input()
     if inp == 'y':
         id_to_person.pop(id_to_delete)
@@ -200,11 +206,11 @@ def delete(id_to_delete):
 
         global removal_list
         removal_list += [id_to_delete]
-        print("Person was deleted\n")
+        print("Person was deleted")
         global is_relevant
         is_relevant = 0
     else:
-        print("Deletion was canceled\n")
+        print("Deletion was canceled")
 
 
 def action(list_id, field, act_):
@@ -218,7 +224,7 @@ def action(list_id, field, act_):
         i = 0
         while i < n:
             print(str(i) + ":", end='  ')
-            print(id_to_person[list_id[i]].to_list())
+            print(id_to_person[list_id[i]].to_str())
             i += 1
 
         if act_ == "d":
@@ -231,15 +237,9 @@ def action(list_id, field, act_):
                 else:
                     delete(list_id[int(inp)])
             else:
-                try:
-                    delete(delete(list_id[0])) # TODO -<<< все выполняется, но летит ошибка. не ловится Exception, но при этом утверждается, что это KeyError which is inException
-                except:
-                    traceback.print_exc()
-
-        else:
-            print('\n')
+                delete(list_id[0])
     if n == 0:
-        print("There is no person with this " + field + "\n")
+        print("There is no person with this " + field)
 
 
 def check(all_list, val):
@@ -247,7 +247,7 @@ def check(all_list, val):
         list_id = all_list[val]
         return list_id
     except KeyError:
-        print("There is no such person\n")
+        print("There is no such person")
         return None
 
 
@@ -259,13 +259,14 @@ def action_launcher(value, all_list, name_of_list, type_of_action):
 
 def act_by_id(id_, type_of_action):
     try:
+        str_ = id_to_person[id_].to_str()
         if type_of_action == "d":
             delete(id_)
         else:
             print("There is your person:")
-            print(id_to_person[id_].to_str())
+            print(str_)
     except KeyError:
-        print("there is no such person")
+        print("There is no such person")
 
 
 def standardize(inp: str):
@@ -302,7 +303,7 @@ def reg_input(str_: str) -> str:
         pattern = pattern.match(inp)
         if pattern is None:
             if i == 0:
-                print("WRONG INPUT\n")
+                print("WRONG INPUT")
                 print("Try again:")
             else:
                 print("FAILED")
@@ -358,7 +359,7 @@ def printing_choice(type_of_action):
         id_ = reg_input("[0-9]+")
         act_by_id(int(id_), type_of_action)
     elif inp != "b":
-        print("WRONG INPUT\n")
+        print("WRONG INPUT")
 
 
 def input_person():
@@ -407,6 +408,7 @@ def input_person():
 
 def start():
     while 1:
+        print("------------------------------------------------------------------------")
         print("Add a person      --> print A(a)")
         print("Delete a person   --> print D(d)")
         print("Find a person     --> print F(f)")
@@ -429,7 +431,7 @@ def start():
             printing_choice("f")
         elif inp == "c":
             clean()
-            print("Base was cleaned\n")
+            print("Base was cleaned")
         elif inp == "e":
             refresh()
             file.close()
@@ -437,9 +439,9 @@ def start():
         elif inp == "r":
             refresh()
         elif inp == "ch":
-            print("Base " + ("is" if is_relevant else "MAY NOT be") + " relevant\n")
+            print("Base " + ("is" if is_relevant else "MAY NOT be") + " relevant")
         else:
-            print("No such command\n")
+            print("No such command")
 
 
 before_start()
