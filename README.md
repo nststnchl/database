@@ -1,15 +1,21 @@
-# Phone book  realization.
+# Phone book realization.
 ### Description:
 Simple phone book realization. 
-Table with name 'database.csv.txt' contains information about ID, Last Name, First Name, Patronymic, Date of birth and Phone number.
+Table with name *database.csv.txt* contains information about **ID**, **Last Name**, **First Name**, **Patronymic**, **Date of birth** and **Phone number**.
 You can open it any time, but relevance is guaranteed either when app is closed, either when table was recently updated.
+
 You can:
-1. Add a person    --> print A(a)
-2. Delete a person --> print D(d)
-3. Find a person   --> print F(f)
-4. Clean database  --> print C(c)
-5. Refresh table   --> print R(r)
-6. Exit            --> print E(e)
+1. Add a person
+
+2. Delete a person
+
+3. Find a person
+
+4. Clean database
+
+5. Refresh table
+
+6. Exit
 
 You can find and delete by all fields of table.
 
