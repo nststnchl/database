@@ -223,19 +223,18 @@ def action(list_id, field, act_):
         print("There " + verb + str(n) + " person " + ending + "with this " + field)
         i = 0
         while i < n:
-            print(str(i) + ":", end='  ')
             print(id_to_person[list_id[i]].to_str())
             i += 1
 
         if act_ == "d":
             if more_than_1:
-                print("Delete n'th     --> print number(counting from 0)")
-                print("Cancel deletion --> c")
+                print("Choose what to delete --> print id")
+                print("Cancel deletion       --> c")
                 inp = input()
                 if inp == "c":
                     return
                 else:
-                    delete(list_id[int(inp)])
+                    delete(int(inp))
             else:
                 delete(list_id[0])
     if n == 0:
