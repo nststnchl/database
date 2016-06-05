@@ -54,8 +54,8 @@ try:
 except FileNotFoundError:
     file = open('database.csv', 'w+')
 
-writer = _csv.writer(file)
-reader = _csv.reader(file)
+writer = _csv.writer(file, delimiter=';')
+reader = _csv.reader(file, delimiter=';')
 
 id_to_person = {}
 last_name_to_id = {}
