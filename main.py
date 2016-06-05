@@ -3,6 +3,7 @@ import _csv
 import re
 import datetime
 import bisect
+import sys
 
 
 class Fio:
@@ -10,23 +11,23 @@ class Fio:
     last_name = ""
     patronymic = ""
 
-    def __init__(self):
-        self.first_name = ""
-        self.last_name = ""
-        self.patronymic = ""
+    def __init__(self, ln, fn, p):
+        self.first_name = fn
+        self.last_name = ln
+        self.patronymic = p
 
 
 class Person:
-    fio = Fio()
+    fio = Fio("", "", "")
     phone_number = 0
     date_of_birth = None
     id = 0
 
-    def __init__(self):
-        self.fio.__init__()
-        self.phone_number = 0
-        self.date_of_birth = None
-        self.id = 0
+    def __init__(self, id_, fio, db, pn):
+        self.fio = fio
+        self.phone_number = pn
+        self.date_of_birth = db
+        self.id = id_
 
     def to_list(self):
         str_ = self.date_of_birth
@@ -68,6 +69,10 @@ def print_line():
     print("---------------------------------------------------------------------")
 
 
+def write_header():
+    writer.writerow(["Id", "Last Name", "First Name", "Patronymic", "Date of birth", "Phone number"])
+
+
 def check_for_birthday(p):
     date = p.date_of_birth
     now = datetime.datetime.now()
@@ -80,6 +85,70 @@ def check_for_birthday(p):
         print_line()
         print("REMINDER: " + p.fio.last_name + " " + p.fio.first_name +
               " " + p.fio.patronymic + " has a birthday in " + str(ost) + " days")
+
+
+def check_for_date(date):
+    try:
+        date = datetime.datetime.strptime(date, "%d.%m.%Y")
+        return date
+    except ValueError:
+        return None
+
+
+def input_and_check_date():
+    i = 0
+    while i < 2:
+        date = check_for_date(input())
+        if date is not None:
+            return date
+        else:
+            print("WRONG INPUT")
+            if i == 0:
+                print("Try again:")
+            else:
+                print("FAILED")
+        i += 1
+    return None
+
+
+def check_for_reg(reg, str_to_check):
+    pattern = re.compile(reg)
+    if pattern.match(str_to_check) is not None:
+        return str_to_check
+    else:
+        return None
+
+
+def input_and_check_usual(reg: str) -> str:
+    i = 0
+    while i < 2:
+        inp = check_for_reg(reg, str(input()))
+        if inp is None:
+            print("WRONG INPUT")
+            if i == 0:
+                print("Try again:")
+            else:
+                print("FAILED")
+        else:
+            return inp
+        i += 1
+    return None
+
+
+def check_person_from_file(id_, ln, fn, p, db, pn):
+    id_ = check_for_reg("[0-9]+", str(id_))
+    id_ = int(id_)
+    ln = check_for_reg("[a-zA-Zа-яА-Я]", ln)
+    fn = check_for_reg("[a-zA-Zа-яА-Я]", fn)
+    p = check_for_reg("[a-zA-Zа-яА-Я]", p)
+    db = check_for_date(db)
+    pn = check_for_reg("[+]?[0-9]+", pn)
+    if id_ is not None and ln is not None and fn is not None and p is not None and db is not None and pn is not None:
+        return Person(id_, Fio(ln, fn, p), db, pn)
+    else:
+        print("Database was corrupted.")
+        print("Clear it or fixe it and launch the application again")
+        sys.exit()
 
 
 def add_value_to_list(list_, key, value):
@@ -103,23 +172,11 @@ def add_one_line_from_file(line):
 
     line = line.rstrip()
     mas = line.split(',')
-    p = Person()
-    fio = Fio()
-    p.id = int(mas[0])
+    p = check_person_from_file(mas[0], mas[1], mas[2], mas[3], mas[4], mas[5])
     if p.id >= biggest_id:
         biggest_id = p.id + 1
-    fio.last_name = mas[1]
-    fio.first_name = mas[2]
-    fio.patronymic = mas[3]
-    p.date_of_birth = datetime.datetime.strptime(mas[4], "%d.%m.%Y")
-    p.phone_number = mas[5]
-    p.fio = fio
     add_person_to_dictionaries(p)
     check_for_birthday(p)
-
-
-def write_header():
-    writer.writerow(["Id", "Last Name", "First Name", "Patronymic", "Date of birth", "Phone number"])
 
 
 def before_start():
@@ -163,7 +220,7 @@ def refresh():
         is_relevant = 1
 
 
-def clean():
+def clear():
     global freed_id
     global id_to_person
     global phone_number_to_id
@@ -243,7 +300,7 @@ def action(list_id, field, act_):
         print("There is no person with this " + field)
 
 
-def check(all_list, key):
+def check_for_containing(all_list, key):
     if key in all_list.keys():
         list_id = all_list[key]
         return list_id
@@ -253,7 +310,7 @@ def check(all_list, key):
 
 
 def action_launcher(key, all_list, name_of_list, type_of_action):
-    list_id = check(all_list, key)
+    list_id = check_for_containing(all_list, key)
     if list_id is not None:
         action(list_id, name_of_list, type_of_action)
 
@@ -277,46 +334,6 @@ def to_standard(inp: str):
     return inp
 
 
-def date_input():
-    i = 0
-    date = None
-    while i < 2:
-        try:
-            date = datetime.datetime.strptime(input(), "%d.%m.%Y")
-            break
-        except ValueError:
-            print("WRONG INPUT")
-            if i == 0:
-                print("Try again:")
-            else:
-                print("FAILED")
-        i += 1
-
-    return date
-
-
-def reg_input(str_: str) -> str:
-    i = 0
-    result_input = None
-    pattern = re.compile(str_)
-    while i < 2:
-        inp = input()
-        print(inp)
-        print(str_)
-        pattern = pattern.match(inp)
-        if pattern is None:
-            if i == 0:
-                print("WRONG INPUT")
-                print("Try again:")
-            else:
-                print("FAILED")
-        else:
-            result_input = inp
-            break
-        i += 1
-    return str(result_input)
-
-
 def printing_choice(type_of_action):
     print("last name       --> print ln")
     print("first name      --> print fn")
@@ -327,39 +344,41 @@ def printing_choice(type_of_action):
     print("go back         --> print b")
     inp = input()
     inp = inp.lower()
+    message = "WRONG INPUT\nTry again:"
     if inp == "ln":
         print("Enter last name: ")
-        last_name = reg_input("[A-Za-zА-Яа-я]+")
+        last_name = input_and_check_usual("[A-Za-zА-Яа-я]+")
         if last_name is None:
             return
         action_launcher(to_standard(last_name), last_name_to_id, "last name", type_of_action)
     elif inp == "fn":
         print("Enter first name:")
-        first_name = reg_input("[A-Za-zА-Яа-я]+")
+        first_name = input_and_check_usual("[A-Za-zА-Яа-я]+")
         if first_name is None:
             return
         action_launcher(to_standard(first_name), first_name_to_id, "first name", type_of_action)
     elif inp == "p":
         print("Enter patronymic:")
-        patronymic = reg_input("[A-Za-zА-Яа-я]+")
+        patronymic = input_and_check_usual("[A-Za-zА-Яа-я]+")
         if patronymic is None:
             return
         action_launcher(to_standard(patronymic), patronymic_to_id, "patronymic", type_of_action)
     elif inp == "db":
         print("Enter date of birth (dd.mm.yyyy):")
-        date_of_birth = date_input()
+        date_of_birth = input_and_check_date()
         if date_of_birth is None:
+            print(message)
             return
         action_launcher(date_of_birth, date_of_birth_to_id, "date_of_birth", type_of_action)
     elif inp == "pn":
         print("Enter phone number")
-        phone_number = reg_input("[+]?[0-9]+")
+        phone_number = input_and_check_usual("[+]?[0-9]+")
         if inp is None:
             return
         action_launcher(phone_number, phone_number_to_id, "phone_number", type_of_action)
     elif inp == "id":
         print("Enter ID")
-        id_ = reg_input("[0-9]+")
+        id_ = input_and_check_usual("[0-9]+")
         act_by_id(int(id_), type_of_action)
     elif inp != "b":
         print("WRONG INPUT")
@@ -368,48 +387,42 @@ def printing_choice(type_of_action):
 def input_person():
     global biggest_id
     global is_relevant
-    per = Person()
-    fio = Fio()
+
     print("last name:")
-    last_name = reg_input("[A-Za-zА-Яа-я]+")
-    if last_name is None:
+    ln = input_and_check_usual("[A-Za-zА-Яа-я]+")
+    if ln is None:
         return
-    fio.last_name = to_standard(last_name)
+    ln = to_standard(ln)
 
     print("first name:")
-    first_name = reg_input("[A-Za-zА-Яа-я]+")
-    if first_name is None:
+    fn = input_and_check_usual("[A-Za-zА-Яа-я]+")
+    if fn is None:
         return
-    fio.first_name = to_standard(first_name)
+    fn = to_standard(fn)
 
     print("patronymic:")
-    patronymic = reg_input("[A-Za-zА-Яа-я]+")
-    if patronymic is None:
+    p = input_and_check_usual("[A-Za-zА-Яа-я]+")
+    if p is None:
         return
-    fio.patronymic = to_standard(patronymic)
-
-    per.fio = fio
+    p = to_standard(p)
 
     print("date of birth (dd.mm.yyyy):")
-    date = date_input()
-    if date is None:
+    db = input_and_check_date()
+    if db is None:
         return
-    per.date_of_birth = date
 
     print("phone number:")
-    phone_number = reg_input("[+]?[0-9]+")
-    if phone_number is None:
+    pn = input_and_check_usual("[+]?[0-9]+")
+    if pn is None:
         return
-    per.phone_number = phone_number
-
     if len(freed_id) > 0:
-        per.id = freed_id[0]
+        id_ = freed_id[0]
         freed_id.pop(0)
     else:
-        per.id = biggest_id
+        id_ = biggest_id
         biggest_id += 1
 
-    add_person_to_dictionaries(per)
+    add_person_to_dictionaries(Person(id_, Fio(ln, fn, p), db, pn))
     is_relevant = 0
 
 
@@ -437,7 +450,7 @@ def start():
             print("FIND A PERSON by ")
             printing_choice("f")
         elif inp == "c":
-            clean()
+            clear()
             print("Base was cleaned")
         elif inp == "e":
             refresh()
