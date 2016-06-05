@@ -12,11 +12,13 @@ You can:
 
 3. Find a person
 
-4. Clean database
+4. Clear database
 
 5. Refresh table
 
-6. Exit
+6. Check if up-to-date
+
+7. Exit
 
 You can find and delete by all fields of table.
 

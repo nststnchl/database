@@ -48,14 +48,14 @@ class Person:
 
 biggest_id = 0
 freed_id = []
-is_relevant = 1
+is_up_to_date = 1
 try:
-    file = open('database.csv.txt', 'r+')
+    file = open('database.csv', 'r+')
 except FileNotFoundError:
-    file = open('database.csv.txt', 'w+')
+    file = open('database.csv', 'w+')
 
-writer = _csv.writer(file)
-reader = _csv.reader(file)
+writer = _csv.writer(file, delimiter=';')
+reader = _csv.reader(file, delimiter=';')
 
 id_to_person = {}
 last_name_to_id = {}
@@ -70,7 +70,7 @@ def print_line():
 
 
 def write_header():
-    writer.writerow(["Id", "Last Name", "First Name", "Patronymic", "Date of birth", "Phone number"])
+    writer.writerow(["Id", "Last Name", "First Name", "Patronymic", "Date of Birth", "Phone Number"])
 
 
 def check_for_birthday(p):
@@ -112,8 +112,12 @@ def input_and_check_date():
 
 
 def check_for_reg(reg, str_to_check):
-    pattern = re.compile(reg)
-    if pattern.match(str_to_check) is not None:
+    pattern = re.compile(reg, flags=re.I|re.X)
+    return check_for_pattern(pattern, str_to_check)
+
+
+def check_for_pattern(pattern, str_to_check):
+    if pattern.fullmatch(str_to_check) is not None:
         return str_to_check
     else:
         return None
@@ -121,8 +125,9 @@ def check_for_reg(reg, str_to_check):
 
 def input_and_check_usual(reg: str) -> str:
     i = 0
+    pattern = re.compile(reg, flags=re.I | re.X)
     while i < 2:
-        inp = check_for_reg(reg, str(input()))
+        inp = check_for_pattern(pattern, str(input()))
         if inp is None:
             print("WRONG INPUT")
             if i == 0:
@@ -138,17 +143,18 @@ def input_and_check_usual(reg: str) -> str:
 def check_person_from_file(id_, ln, fn, p, db, pn):
     id_ = check_for_reg("[0-9]+", str(id_))
     id_ = int(id_)
-    ln = check_for_reg("[a-zA-Zа-яА-Я]", ln)
-    fn = check_for_reg("[a-zA-Zа-яА-Я]", fn)
-    p = check_for_reg("[a-zA-Zа-яА-Я]", p)
+    ln = check_for_reg("([A-Z]+ (- [A-Z]+)*) | ([А-Я]+ (- [А-Я]+)*)", ln)
+    fn = check_for_reg("([A-Z]+) | ([А-Я]+)", fn)
+    p = check_for_reg("([A-Z]+) | ([А-Я]+) | ()", p)
     db = check_for_date(db)
     pn = check_for_reg("[+]?[0-9]+", pn)
     if id_ is not None and ln is not None and fn is not None and p is not None and db is not None and pn is not None:
         return Person(id_, Fio(ln, fn, p), db, pn)
     else:
-        print("Database was corrupted.")
-        print("Clear it or fixe it and launch the application again")
-        sys.exit()
+        print("Database was corrupted!")
+        print("Clear it or fix it and launch the application again")
+        file.close()
+        sys.exit(1)
 
 
 def add_value_to_list(list_, key, value):
@@ -171,7 +177,7 @@ def add_one_line_from_file(line):
     global biggest_id
 
     line = line.rstrip()
-    mas = line.split(',')
+    mas = line.split(';')
     p = check_person_from_file(mas[0], mas[1], mas[2], mas[3], mas[4], mas[5])
     if p.id >= biggest_id:
         biggest_id = p.id + 1
@@ -196,10 +202,10 @@ def before_start():
 
 
 def refresh():
-    global is_relevant
+    global is_up_to_date
     global biggest_id
 
-    if is_relevant == 0:
+    if is_up_to_date == 0:
         file.seek(0)
         file.truncate()
         write_header()
@@ -217,7 +223,7 @@ def refresh():
             while freed_id[i] >= biggest_id:
                 freed_id.pop(i)
                 i -= 1
-        is_relevant = 1
+        is_up_to_date = 1
 
 
 def clear():
@@ -228,11 +234,11 @@ def clear():
     global last_name_to_id
     global first_name_to_id
     global patronymic_to_id
-    global is_relevant
+    global is_up_to_date
 
     bisect.insort(freed_id, id_to_person.keys)
 
-    is_relevant = 0
+    is_up_to_date = 0
 
     id_to_person.clear()
     date_of_birth_to_id.clear()
@@ -251,7 +257,7 @@ def delete_id_from_list(list_, key, id_to_delete):
 
 def delete(id_to_delete):
     global freed_id
-    global is_relevant
+    global is_up_to_date
 
     p = id_to_person[id_to_delete]
     print("Do you want to delete this one? (Y/N)")
@@ -268,7 +274,7 @@ def delete(id_to_delete):
         bisect.insort(freed_id, id_to_delete)
         print("Person was deleted")
 
-        is_relevant = 0
+        is_up_to_date = 0
     else:
         print("Deletion was canceled")
 
@@ -279,7 +285,7 @@ def action(list_id, field, act_):
         n = len(list_id)
         more_than_1 = n > 1
         if more_than_1:
-            print("There are " + str(n) + " persons  with this " + field)
+            print("There are " + str(n) + " persons with this " + field)
             i = 0
             while i < n:
                 print(id_to_person[list_id[i]].to_str())
@@ -321,45 +327,48 @@ def act_by_id(id_, type_of_action):
         if type_of_action == "d":
             delete(id_)
         else:
-            print("There is your person:")
+            print("Here is your person:")
             print(str_)
     except KeyError:
         print("There is no such person")
 
 
 def to_standard(inp: str):
-    inp = inp.lower()
-    ch = inp[0].upper()
-    inp = ch + inp[1:]
-    return inp
+    if len(inp) == 0:
+        return inp
+    else:
+        inp = inp.lower()
+        ch = inp[0].upper()
+        inp = ch + inp[1:]
+        return inp
 
 
 def printing_choice(type_of_action):
-    print("last name       --> print ln")
-    print("first name      --> print fn")
-    print("patronymic      --> print p")
-    print("date of birth   --> print db")
-    print("phone number    --> print pn")
-    print("ID              --> print id")
-    print("go back         --> print b")
+    print("Last Name       --> print ln")
+    print("First Name      --> print fn")
+    print("Patronymic      --> print p")
+    print("Date of Birth   --> print db")
+    print("Phone Number    --> print pn")
+    print("Id              --> print id")
+    print("Go back         --> print b")
     inp = input()
     inp = inp.lower()
     message = "WRONG INPUT\nTry again:"
     if inp == "ln":
         print("Enter last name: ")
-        last_name = input_and_check_usual("[A-Za-zА-Яа-я]+")
+        last_name = input_and_check_usual("([A-Z]+ (- [A-Z]+)*) | ([А-Я]+ (- [А-Я]+)*)")
         if last_name is None:
             return
         action_launcher(to_standard(last_name), last_name_to_id, "last name", type_of_action)
     elif inp == "fn":
         print("Enter first name:")
-        first_name = input_and_check_usual("[A-Za-zА-Яа-я]+")
+        first_name = input_and_check_usual("([A-Z]+) | ([А-Я]+)")
         if first_name is None:
             return
         action_launcher(to_standard(first_name), first_name_to_id, "first name", type_of_action)
     elif inp == "p":
         print("Enter patronymic:")
-        patronymic = input_and_check_usual("[A-Za-zА-Яа-я]+")
+        patronymic = input_and_check_usual("([A-Z]+) | ([А-Я]+) | ()")
         if patronymic is None:
             return
         action_launcher(to_standard(patronymic), patronymic_to_id, "patronymic", type_of_action)
@@ -369,15 +378,15 @@ def printing_choice(type_of_action):
         if date_of_birth is None:
             print(message)
             return
-        action_launcher(date_of_birth, date_of_birth_to_id, "date_of_birth", type_of_action)
+        action_launcher(date_of_birth, date_of_birth_to_id, "date of birth", type_of_action)
     elif inp == "pn":
         print("Enter phone number")
         phone_number = input_and_check_usual("[+]?[0-9]+")
         if inp is None:
             return
-        action_launcher(phone_number, phone_number_to_id, "phone_number", type_of_action)
+        action_launcher(phone_number, phone_number_to_id, "phone number", type_of_action)
     elif inp == "id":
-        print("Enter ID")
+        print("Enter Id")
         id_ = input_and_check_usual("[0-9]+")
         act_by_id(int(id_), type_of_action)
     elif inp != "b":
@@ -386,35 +395,35 @@ def printing_choice(type_of_action):
 
 def input_person():
     global biggest_id
-    global is_relevant
-
-    print("last name:")
-    ln = input_and_check_usual("[A-Za-zА-Яа-я]+")
+    global is_up_to_date
+    print("Last Name:")
+    ln = input_and_check_usual("([A-Z]+ (- [A-Z]+)*) | ([А-Я]+ (- [А-Я]+)*)")
     if ln is None:
         return
     ln = to_standard(ln)
 
-    print("first name:")
-    fn = input_and_check_usual("[A-Za-zА-Яа-я]+")
+    print("First Name:")
+    fn = input_and_check_usual("([A-Z]+) | ([А-Я]+)")
     if fn is None:
         return
     fn = to_standard(fn)
 
-    print("patronymic:")
-    p = input_and_check_usual("[A-Za-zА-Яа-я]+")
+    print("Patronymic:")
+    p = input_and_check_usual("([A-Z]+) | ([А-Я]+) | ()")
     if p is None:
         return
     p = to_standard(p)
 
-    print("date of birth (dd.mm.yyyy):")
+    print("Date of Birth (dd.mm.yyyy):")
     db = input_and_check_date()
     if db is None:
         return
 
-    print("phone number:")
+    print("Phone Number:")
     pn = input_and_check_usual("[+]?[0-9]+")
     if pn is None:
         return
+
     if len(freed_id) > 0:
         id_ = freed_id[0]
         freed_id.pop(0)
@@ -423,19 +432,19 @@ def input_person():
         biggest_id += 1
 
     add_person_to_dictionaries(Person(id_, Fio(ln, fn, p), db, pn))
-    is_relevant = 0
+    is_up_to_date = 0
 
 
 def start():
     while 1:
         print_line()
-        print("Add a person      --> print A(a)")
-        print("Delete a person   --> print D(d)")
-        print("Find a person     --> print F(f)")
-        print("Clean database    --> print C(c)")
-        print("Refresh table     --> print R(r)")
-        print("Check if relevant --> print CH(ch)")
-        print("Exit              --> print E(e)")
+        print("Add a person        --> print A(a)")
+        print("Delete a person     --> print D(d)")
+        print("Find a person       --> print F(f)")
+        print("Clear database      --> print C(c)")
+        print("Refresh table       --> print R(r)")
+        print("Check if up-to-date --> print CH(ch)")
+        print("Exit                --> print E(e)")
 
         inp = input()
         inp = inp.lower()
@@ -451,7 +460,7 @@ def start():
             printing_choice("f")
         elif inp == "c":
             clear()
-            print("Base was cleaned")
+            print("Base was cleared")
         elif inp == "e":
             refresh()
             file.close()
@@ -459,7 +468,7 @@ def start():
         elif inp == "r":
             refresh()
         elif inp == "ch":
-            print("Base " + ("is" if is_relevant else "MAY NOT be") + " relevant")
+            print("Base " + ("is" if is_up_to_date else "MAY NOT be") + " up-to-date")
         else:
             print("No such command")
 
