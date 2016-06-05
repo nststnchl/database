@@ -1,7 +1,7 @@
 # Phone book realization.
 ### Description:
 Simple phone book realization. 
-Table with name *database.csv.txt* contains information about **ID**, **Last Name**, **First Name**, **Patronymic**, **Date of birth** and **Phone number**.
+Table with name *database.csv* contains information about **ID**, **Last Name**, **First Name**, **Patronymic**, **Date of birth** and **Phone number**.
 You can open it any time, but relevance is guaranteed either when app is closed, either when table was recently updated.
 
 You can:
