@@ -54,8 +54,8 @@ try:
 except FileNotFoundError:
     file = open('database.csv', 'w+')
 
-writer = _csv.writer(file, delimiter=';')
-reader = _csv.reader(file, delimiter=';')
+writer = _csv.writer(file)
+reader = _csv.reader(file)
 
 id_to_person = {}
 last_name_to_id = {}
@@ -112,7 +112,7 @@ def input_and_check_date():
 
 
 def check_for_reg(reg, str_to_check):
-    pattern = re.compile(reg, flags=re.I|re.X)
+    pattern = re.compile(reg, flags=re.I | re.X)
     return check_for_pattern(pattern, str_to_check)
 
 
@@ -177,7 +177,7 @@ def add_one_line_from_file(line):
     global biggest_id
 
     line = line.rstrip()
-    mas = line.split(';')
+    mas = line.split(',')
     p = check_person_from_file(mas[0], mas[1], mas[2], mas[3], mas[4], mas[5])
     if p.id >= biggest_id:
         biggest_id = p.id + 1
@@ -219,11 +219,10 @@ def refresh():
         file.flush()
         biggest_id = new_biggest_id
         i = len(freed_id) - 1
-        if i != -1:
-            while freed_id[i] >= biggest_id:
-                freed_id.pop(i)
-                i -= 1
-        is_up_to_date = 1
+        while i != -1 and freed_id[i] >= biggest_id:
+            freed_id.pop(i)
+            i -= 1
+    is_up_to_date = 1
 
 
 def clear():
@@ -236,7 +235,8 @@ def clear():
     global patronymic_to_id
     global is_up_to_date
 
-    bisect.insort(freed_id, id_to_person.keys)
+    for i in id_to_person.keys():
+        bisect.insort(freed_id, i)
 
     is_up_to_date = 0
 
