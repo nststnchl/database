@@ -4,8 +4,6 @@ import re
 import datetime
 import bisect
 
-NUM_OF_ARGS = 6
-
 
 class Fio:
     first_name = ""
@@ -40,7 +38,7 @@ class Person:
         str_ = ""
         list_ = self.to_list()
         i = 0
-        while i < NUM_OF_ARGS:
+        while i < len(list_):
             str_ += str(list_[i])
             str_ += " "
             i += 1
@@ -59,11 +57,15 @@ writer = _csv.writer(file)
 reader = _csv.reader(file)
 
 id_to_person = {}
-phone_number_to_id = {}
-date_of_birth_to_id = {}
 last_name_to_id = {}
 first_name_to_id = {}
 patronymic_to_id = {}
+phone_number_to_id = {}
+date_of_birth_to_id = {}
+
+
+def print_line():
+    print("---------------------------------------------------------------------")
 
 
 def check_for_birthday(p):
@@ -75,6 +77,7 @@ def check_for_birthday(p):
         date = datetime.datetime(year=date.year + 1, month=date.month, day=date.day)
     ost = (date - now).days
     if ost < 14:
+        print_line()
         print("REMINDER: " + p.fio.last_name + " " + p.fio.first_name +
               " " + p.fio.patronymic + " has a birthday in " + str(ost) + " days")
 
@@ -88,28 +91,29 @@ def add_value_to_list(list_, key, value):
 
 def add_person_to_dictionaries(p):
     id_to_person[p.id] = p
-    add_value_to_list(phone_number_to_id, p.phone_number, p.id)
-    add_value_to_list(date_of_birth_to_id, p.date_of_birth, p.id)
     add_value_to_list(last_name_to_id, p.fio.last_name, p.id)
     add_value_to_list(first_name_to_id, p.fio.first_name, p.id)
     add_value_to_list(patronymic_to_id, p.fio.patronymic, p.id)
+    add_value_to_list(phone_number_to_id, p.phone_number, p.id)
+    add_value_to_list(date_of_birth_to_id, p.date_of_birth, p.id)
 
 
 def add_one_line_from_file(line):
+    global biggest_id
+
     line = line.rstrip()
     mas = line.split(',')
     p = Person()
+    fio = Fio()
     p.id = int(mas[0])
-    global biggest_id
     if p.id >= biggest_id:
         biggest_id = p.id + 1
-    fio = Fio()
     fio.last_name = mas[1]
     fio.first_name = mas[2]
     fio.patronymic = mas[3]
-    p.fio = fio
     p.date_of_birth = datetime.datetime.strptime(mas[4], "%d.%m.%Y")
     p.phone_number = mas[5]
+    p.fio = fio
     add_person_to_dictionaries(p)
     check_for_birthday(p)
 
@@ -145,15 +149,17 @@ def refresh():
         new_biggest_id = 0
 
         for i in id_to_person.keys():
-            try:
-                p = id_to_person[i]
-                writer.writerow(p.to_list())
-                if new_biggest_id <= i:
-                    new_biggest_id = i + 1
-            except KeyError:
-                pass
+            p = id_to_person[i]
+            writer.writerow(p.to_list())
+            if new_biggest_id <= i:
+                new_biggest_id = i + 1
         file.flush()
         biggest_id = new_biggest_id
+        i = len(freed_id) - 1
+        if i != -1:
+            while freed_id[i] >= biggest_id:
+                freed_id.pop(i)
+                i -= 1
         is_relevant = 1
 
 
@@ -215,13 +221,12 @@ def action(list_id, field, act_):
     if n > 0:
         n = len(list_id)
         more_than_1 = n > 1
-        verb = "are " if more_than_1 else "is "
-        ending = "s" if more_than_1 else ""
-        print("There " + verb + str(n) + " person " + ending + "with this " + field)
-        i = 0
-        while i < n:
-            print(id_to_person[list_id[i]].to_str())
-            i += 1
+        if more_than_1:
+            print("There are " + str(n) + " persons  with this " + field)
+            i = 0
+            while i < n:
+                print(id_to_person[list_id[i]].to_str())
+                i += 1
 
         if act_ == "d":
             if more_than_1:
@@ -238,17 +243,17 @@ def action(list_id, field, act_):
         print("There is no person with this " + field)
 
 
-def check(all_list, val):
-    try:
-        list_id = all_list[val]
+def check(all_list, key):
+    if key in all_list.keys():
+        list_id = all_list[key]
         return list_id
-    except KeyError:
+    else:
         print("There is no such person")
         return None
 
 
-def action_launcher(value, all_list, name_of_list, type_of_action):
-    list_id = check(all_list, value)
+def action_launcher(key, all_list, name_of_list, type_of_action):
+    list_id = check(all_list, key)
     if list_id is not None:
         action(list_id, name_of_list, type_of_action)
 
@@ -265,7 +270,7 @@ def act_by_id(id_, type_of_action):
         print("There is no such person")
 
 
-def standardize(inp: str):
+def to_standard(inp: str):
     inp = inp.lower()
     ch = inp[0].upper()
     inp = ch + inp[1:]
@@ -292,10 +297,12 @@ def date_input():
 
 def reg_input(str_: str) -> str:
     i = 0
-    phone_number = None
+    result_input = None
     pattern = re.compile(str_)
     while i < 2:
         inp = input()
+        print(inp)
+        print(str_)
         pattern = pattern.match(inp)
         if pattern is None:
             if i == 0:
@@ -304,10 +311,10 @@ def reg_input(str_: str) -> str:
             else:
                 print("FAILED")
         else:
-            phone_number = inp
+            result_input = inp
             break
         i += 1
-    return str(phone_number)
+    return str(result_input)
 
 
 def printing_choice(type_of_action):
@@ -325,19 +332,19 @@ def printing_choice(type_of_action):
         last_name = reg_input("[A-Za-zА-Яа-я]+")
         if last_name is None:
             return
-        action_launcher(standardize(last_name), last_name_to_id, "last name", type_of_action)
+        action_launcher(to_standard(last_name), last_name_to_id, "last name", type_of_action)
     elif inp == "fn":
         print("Enter first name:")
         first_name = reg_input("[A-Za-zА-Яа-я]+")
         if first_name is None:
             return
-        action_launcher(standardize(first_name), first_name_to_id, "first name", type_of_action)
+        action_launcher(to_standard(first_name), first_name_to_id, "first name", type_of_action)
     elif inp == "p":
         print("Enter patronymic:")
         patronymic = reg_input("[A-Za-zА-Яа-я]+")
         if patronymic is None:
             return
-        action_launcher(standardize(patronymic), patronymic_to_id, "patronymic", type_of_action)
+        action_launcher(to_standard(patronymic), patronymic_to_id, "patronymic", type_of_action)
     elif inp == "db":
         print("Enter date of birth (dd.mm.yyyy):")
         date_of_birth = date_input()
@@ -367,19 +374,19 @@ def input_person():
     last_name = reg_input("[A-Za-zА-Яа-я]+")
     if last_name is None:
         return
-    fio.last_name = standardize(last_name)
+    fio.last_name = to_standard(last_name)
 
     print("first name:")
     first_name = reg_input("[A-Za-zА-Яа-я]+")
-    if fio is None:
+    if first_name is None:
         return
-    fio.first_name = standardize(first_name)
+    fio.first_name = to_standard(first_name)
 
     print("patronymic:")
     patronymic = reg_input("[A-Za-zА-Яа-я]+")
     if patronymic is None:
         return
-    fio.patronymic = standardize(patronymic)
+    fio.patronymic = to_standard(patronymic)
 
     per.fio = fio
 
@@ -408,7 +415,7 @@ def input_person():
 
 def start():
     while 1:
-        print("------------------------------------------------------------------------")
+        print_line()
         print("Add a person      --> print A(a)")
         print("Delete a person   --> print D(d)")
         print("Find a person     --> print F(f)")
