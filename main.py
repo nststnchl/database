@@ -177,7 +177,7 @@ def add_one_line_from_file(line):
     global biggest_id
 
     line = line.rstrip()
-    mas = line.split(',')
+    mas = line.split(';')
     p = check_person_from_file(mas[0], mas[1], mas[2], mas[3], mas[4], mas[5])
     if p.id >= biggest_id:
         biggest_id = p.id + 1
